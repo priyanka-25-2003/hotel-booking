@@ -1,0 +1,410 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Booking Cancellation Prediction</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            margin: 0;
+            padding: 30px 15px;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            text-align: center;
+            color: #1e293b;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 30px;
+        }
+
+        h3 {
+            color: #2563eb;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #334155;
+        }
+
+        input, select {
+            padding: 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        input:focus, select:focus {
+            outline: 2px solid #93c5fd;
+            border-color: #2563eb;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 30px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        #result {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            margin-top: 25px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .success {
+            display: block !important;
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .cancelled {
+            display: block !important;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .error {
+            display: block !important;
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        @media(max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Hotel Booking Cancellation Prediction</h1>
+
+    <p class="subtitle">
+        Enter booking details to predict cancellation
+    </p>
+
+    <form id="bookingForm">
+
+        <h3>Hotel Information</h3>
+        <div class="form-grid" id="hotelFields"></div>
+
+        <h3>Arrival Information</h3>
+        <div class="form-grid" id="arrivalFields"></div>
+
+        <h3>Guest Information</h3>
+        <div class="form-grid" id="guestFields"></div>
+
+        <h3>Booking Information</h3>
+        <div class="form-grid" id="bookingFields"></div>
+
+        <h3>Customer Information</h3>
+        <div class="form-grid" id="customerFields"></div>
+
+        <button type="submit" id="predictBtn">
+            Predict Cancellation
+        </button>
+
+    </form>
+
+    <div id="result"></div>
+
+</div>
+
+<script>
+
+// Create form fields dynamically
+
+const sections = {
+
+    hotelFields: [
+        ["hotel", "Hotel", "select",
+            ["Resort Hotel", "City Hotel"], "City Hotel"]
+    ],
+
+    arrivalFields: [
+        ["arrival_date_year", "Arrival Year", "number", null, 2017],
+        ["arrival_date_month", "Arrival Month", "select",
+            ["January","February","March","April","May","June",
+             "July","August","September","October","November","December"],
+            "July"],
+        ["arrival_date_week_number", "Arrival Week Number", "number", null, 27],
+        ["arrival_date_day_of_month", "Arrival Day", "number", null, 15],
+        ["stays_in_weekend_nights", "Weekend Nights", "number", null, 1],
+        ["stays_in_week_nights", "Week Nights", "number", null, 2]
+    ],
+
+    guestFields: [
+        ["adults", "Adults", "number", null, 2],
+        ["children", "Children", "number", null, 0],
+        ["babies", "Babies", "number", null, 0],
+        ["country", "Country Code", "text", null, "PRT"],
+        ["is_repeated_guest", "Repeated Guest", "select",
+            ["0", "1"], "0"]
+    ],
+
+    bookingFields: [
+        ["lead_time", "Lead Time (Days)", "number", null, 50],
+        ["meal", "Meal Type", "select",
+            ["BB", "FB", "HB", "SC", "Undefined"], "BB"],
+        ["market_segment", "Market Segment", "select",
+            ["Online TA", "Offline TA/TO", "Direct",
+             "Groups", "Corporate", "Complementary", "Aviation",
+             "Undefined"], "Online TA"],
+        ["distribution_channel", "Distribution Channel", "select",
+            ["TA/TO", "Direct", "Corporate", "GDS", "Undefined"],
+            "TA/TO"],
+        ["reserved_room_type", "Reserved Room Type", "text", null, "A"],
+        ["assigned_room_type", "Assigned Room Type", "text", null, "A"],
+        ["booking_changes", "Booking Changes", "number", null, 0],
+        ["deposit_type", "Deposit Type", "select",
+            ["No Deposit", "Non Refund", "Refundable"], "No Deposit"],
+        ["agent", "Agent ID (0 if none)", "number", null, 0],
+        ["company", "Company ID (0 if none)", "number", null, 0],
+        ["days_in_waiting_list", "Waiting List Days", "number", null, 0],
+        ["adr", "Average Daily Rate", "number", null, 100],
+        ["required_car_parking_spaces", "Parking Spaces", "number", null, 0],
+        ["total_of_special_requests", "Special Requests", "number", null, 0]
+    ],
+
+    customerFields: [
+        ["previous_cancellations", "Previous Cancellations", "number", null, 0],
+        ["previous_bookings_not_canceled", "Previous Bookings Not Cancelled", "number", null, 0],
+        ["customer_type", "Customer Type", "select",
+            ["Transient", "Contract", "Transient-Party", "Group"],
+            "Transient"],
+        ["city", "City", "text", null, "Lisbon"]
+    ]
+
+};
+
+// Generate inputs
+
+for (const section in sections) {
+
+    const container = document.getElementById(section);
+
+    sections[section].forEach(field => {
+
+        const [name, label, type, options, defaultValue] = field;
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "field";
+
+        const labelElement = document.createElement("label");
+        labelElement.htmlFor = name;
+        labelElement.textContent = label;
+
+        let input;
+
+        if (type === "select") {
+
+            input = document.createElement("select");
+
+            options.forEach(option => {
+                const opt = document.createElement("option");
+                opt.value = option;
+                opt.textContent = option;
+                input.appendChild(opt);
+            });
+
+        } else {
+
+            input = document.createElement("input");
+            input.type = type;
+
+            if (type === "number") {
+                input.step = "any";
+            }
+        }
+
+        input.id = name;
+        input.name = name;
+        input.value = defaultValue;
+
+        if (type === "number") {
+            input.required = true;
+        }
+
+        wrapper.appendChild(labelElement);
+        wrapper.appendChild(input);
+
+        container.appendChild(wrapper);
+
+    });
+
+}
+
+
+// Send data to FastAPI
+
+document.getElementById("bookingForm")
+.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const form = new FormData(this);
+    const data = {};
+
+    form.forEach((value, key) => {
+
+        const numericFields = [
+            "lead_time",
+            "arrival_date_year",
+            "arrival_date_week_number",
+            "arrival_date_day_of_month",
+            "stays_in_weekend_nights",
+            "stays_in_week_nights",
+            "adults",
+            "children",
+            "babies",
+            "is_repeated_guest",
+            "previous_cancellations",
+            "previous_bookings_not_canceled",
+            "booking_changes",
+            "agent",
+            "company",
+            "days_in_waiting_list",
+            "adr",
+            "required_car_parking_spaces",
+            "total_of_special_requests"
+        ];
+
+        data[key] = numericFields.includes(key)
+            ? Number(value)
+            : value;
+
+    });
+
+    const resultDiv = document.getElementById("result");
+    const button = document.getElementById("predictBtn");
+
+    resultDiv.className = "";
+    resultDiv.style.display = "block";
+    resultDiv.textContent = "Predicting...";
+
+    button.disabled = true;
+
+    try {
+
+        const response = await fetch(
+            "http://127.0.0.1:8000/predict",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify(data)
+            }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                result.detail
+                    ? JSON.stringify(result.detail)
+                    : "Prediction failed"
+            );
+        }
+
+        if (result.prediction === 1) {
+
+            resultDiv.className = "cancelled";
+
+        } else {
+
+            resultDiv.className = "success";
+
+        }
+
+        resultDiv.textContent =
+            "Prediction: " + result.result;
+
+    }
+
+    catch(error) {
+
+        resultDiv.className = "error";
+
+        resultDiv.textContent =
+            "Error: " + error.message;
+
+    }
+
+    finally {
+
+        button.disabled = false;
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
